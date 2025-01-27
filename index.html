@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Biological Neuron - Inspiration for Artificial Neural Networks</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -148,6 +149,62 @@
             margin-top: 10px;
             margin-bottom: 8px;
         }
+        
+        .neuron-container {
+            width: 100%;
+            height: 400px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            position: relative;
+        }
+        
+        .neuron-container svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .neuron-part {
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        
+        .neuron-part:hover {
+            opacity: 0.8;
+        }
+        
+        .neuron-label {
+            font-size: 14px;
+            fill: #666;
+            font-weight: bold;
+        }
+        
+        .math-label {
+            font-size: 16px;
+            font-style: italic;
+            fill: #333;
+            font-family: "Times New Roman", serif;
+        }
+        
+        .signal-description {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .signal-pulse {
+            fill: #4a90e2;
+            opacity: 0;
+        }
     </style>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -171,11 +228,344 @@
 
     <section id="section3">
         <p>Each neuron has several key components:</p>
-        <div class="interactive-placeholder">
-            <img src="/placeholder.svg?height=400&width=600" alt="Structure of a Biological Neuron: A clear and labeled diagram of a biological neuron. The diagram shows the following parts: dendrites (branch-like structures that receive signals), cell body (soma) (the main part of the neuron that contains the nucleus), axon (a long, slender fiber that transmits signals away from the cell body), and synapses (the junctions between neurons where signals are transmitted). Arrows indicate the direction of signal flow (from dendrites to axon). The different parts are color-coded for better visualization.">
-        </div>
-        <p><em>A simplified diagram of a biological neuron, highlighting the key components involved in signal processing and transmission.</em></p>
+        <div id="neuron-visualization" class="neuron-container"></div>
+        <p><em>A simplified diagram of a biological neuron, highlighting the key components involved in signal processing and transmission. Click on different parts to see their function!</em></p>
         <div class="continue-button" onclick="showNextSection(4)">Continue</div>
+
+        <script>
+            // Show the first section initially
+            document.getElementById("section1").style.display = "block";
+            document.getElementById("section1").style.opacity = "1";
+
+            function showNextSection(nextSectionId) {
+                const currentButton = event.target;
+                const nextSection = document.getElementById("section" + nextSectionId);
+                
+                currentButton.style.display = "none";
+                
+                nextSection.style.display = "block";
+                setTimeout(() => {
+                    nextSection.style.opacity = "1";
+                    // Initialize neuron visualization when section3 becomes visible
+                    if (nextSectionId === 3) {
+                        initializeNeuronVisualization();
+                    }
+                }, 10);
+
+                setTimeout(() => {
+                    nextSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 500);
+            }
+
+            function initializeNeuronVisualization() {
+                // Set up the SVG with viewBox for better scaling
+                const container = document.getElementById('neuron-visualization');
+                const width = container.offsetWidth;
+                const height = 400;
+                
+                // Clear any existing content
+                container.innerHTML = '';
+                
+                const svg = d3.select('#neuron-visualization')
+                    .append('svg')
+                    .attr('width', '100%')
+                    .attr('height', '100%')
+                    .attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('preserveAspectRatio', 'xMidYMid meet');
+                
+                // Create a group for all neuron elements
+                const mainGroup = svg.append('g')
+                    .attr('transform', `translate(${width * 0.1}, ${height * 0.5})`);
+
+                // Add signal description div
+                const signalDescription = d3.select('#neuron-visualization')
+                    .append('div')
+                    .attr('class', 'signal-description')
+                    .style('opacity', 0)
+                    .text('Click on dendrites to start signal transmission');
+                
+                // Add definitions for markers (arrowheads)
+                const defs = svg.append('defs');
+                defs.append('marker')
+                    .attr('id', 'arrowhead')
+                    .attr('viewBox', '0 -5 10 10')
+                    .attr('refX', 8)
+                    .attr('refY', 0)
+                    .attr('markerWidth', 6)
+                    .attr('markerHeight', 6)
+                    .attr('orient', 'auto')
+                    .append('path')
+                    .attr('d', 'M0,-5L10,0L0,5')
+                    .attr('fill', '#666');
+
+                // Define neuron parts and their descriptions
+                const neuronParts = {
+                    dendrites: {
+                        color: '#7cb342',
+                        desc: 'Dendrites: Branch-like structures that receive signals from other neurons',
+                        label: 'Dendrites',
+                        signalDesc: 'Dendrites receive signals from other neurons'
+                    },
+                    cellBody: {
+                        color: '#f57c00',
+                        desc: 'Cell Body (Soma): Processes and integrates incoming signals',
+                        label: 'Cell Body\n(Soma)',
+                        signalDesc: 'Cell body processes and integrates the signals'
+                    },
+                    axon: {
+                        color: '#1976d2',
+                        desc: 'Axon: Transmits processed signals to other neurons',
+                        label: 'Axon',
+                        signalDesc: 'Axon carries the signal to synapses'
+                    },
+                    synapses: {
+                        color: '#d32f2f',
+                        desc: 'Synapses: Junctions where signals are passed to other neurons',
+                        label: 'Synapses',
+                        signalDesc: 'Synapses release neurotransmitters to signal other neurons'
+                    }
+                };
+
+                // Draw and label dendrites with smooth connections to soma
+                const dendritesGroup = mainGroup.append('g')
+                    .attr('class', 'neuron-part dendrites');
+                
+                const dendritePositions = [
+                    {x1: 50, y1: -40, x2: 110, y2: -40, endX: 150, endY: -30},
+                    {x1: 50, y1: 0, x2: 110, y2: 0, endX: 150, endY: 0},
+                    {x1: 50, y1: 40, x2: 110, y2: 40, endX: 150, endY: 30}
+                ];
+
+                // Add input arrows and labels
+                dendritePositions.forEach((pos, index) => {
+                    // Draw dendrite with curve to soma
+                    dendritesGroup.append('path')
+                        .attr('d', `M${pos.x1},${pos.y1} 
+                            Q${(pos.x1+pos.x2)/2},${pos.y1} ${pos.x2},${pos.y1} 
+                            Q${(pos.x2+pos.endX)/2},${(pos.y1+pos.endY)/2} ${pos.endX},${pos.endY}`)
+                        .attr('stroke', neuronParts.dendrites.color)
+                        .attr('stroke-width', 3)
+                        .attr('fill', 'none');
+
+                    // Add input arrow
+                    const arrowGroup = mainGroup.append('g')
+                        .attr('transform', `translate(${pos.x1-50},${pos.y1})`);
+                    
+                    // Arrow line
+                    arrowGroup.append('line')
+                        .attr('x1', 0)
+                        .attr('y1', 0)
+                        .attr('x2', 40)
+                        .attr('y2', 0)
+                        .attr('stroke', '#666')
+                        .attr('stroke-width', 2)
+                        .attr('marker-end', 'url(#arrowhead)');
+
+                    // Input label with subscript
+                    const label = index === 2 ? 'xₘ' : `x${index + 1}`;
+                    arrowGroup.append('text')
+                        .attr('class', 'math-label')
+                        .attr('x', -10)
+                        .attr('y', 5)
+                        .attr('text-anchor', 'end')
+                        .text(label);
+                });
+
+                // Draw and label cell body
+                const cellBody = mainGroup.append('circle')
+                    .attr('class', 'neuron-part cell-body')
+                    .attr('cx', 150)
+                    .attr('cy', 0)
+                    .attr('r', 40)
+                    .attr('fill', neuronParts.cellBody.color);
+
+                // Add cell body label
+                const cellBodyLabel = mainGroup.append('text')
+                    .attr('class', 'neuron-label')
+                    .attr('x', 150)
+                    .attr('y', -60)
+                    .attr('text-anchor', 'middle');
+
+                cellBodyLabel.append('tspan')
+                    .attr('x', 150)
+                    .text('Cell Body');
+                cellBodyLabel.append('tspan')
+                    .attr('x', 150)
+                    .attr('dy', 20)
+                    .text('(Soma)');
+
+                // Draw and label axon
+                const axon = mainGroup.append('path')
+                    .attr('class', 'neuron-part axon')
+                    .attr('d', 'M190,0 C350,0 400,0 500,0')
+                    .attr('stroke', neuronParts.axon.color)
+                    .attr('stroke-width', 4)
+                    .attr('fill', 'none');
+
+                // Add axon label
+                mainGroup.append('text')
+                    .attr('class', 'neuron-label')
+                    .attr('x', 350)
+                    .attr('y', -20)
+                    .attr('text-anchor', 'middle')
+                    .text(neuronParts.axon.label);
+
+                // Add output arrow and label 'a' on the axon
+                const outputArrow = mainGroup.append('g')
+                    .attr('transform', `translate(350,0)`);
+                
+                outputArrow.append('line')
+                    .attr('x1', -20)
+                    .attr('y1', 0)
+                    .attr('x2', 20)
+                    .attr('y2', 0)
+                    .attr('stroke', '#666')
+                    .attr('stroke-width', 2)
+                    .attr('marker-end', 'url(#arrowhead)');
+
+                outputArrow.append('text')
+                    .attr('class', 'math-label')
+                    .attr('x', 30)
+                    .attr('y', -5)
+                    .attr('text-anchor', 'start')
+                    .text('a');
+
+                // Draw and label synapses
+                const synapsesGroup = mainGroup.append('g')
+                    .attr('class', 'neuron-part synapses');
+
+                const synapsePositions = [
+                    {x1: 500, y1: 0, x2: 550, y2: -50},
+                    {x1: 500, y1: 0, x2: 550, y2: 0},
+                    {x1: 500, y1: 0, x2: 550, y2: 50}
+                ];
+
+                synapsePositions.forEach(pos => {
+                    synapsesGroup.append('path')
+                        .attr('d', `M${pos.x1},${pos.y1} Q${(pos.x1+pos.x2)/2},${(pos.y1+pos.y2)/2} ${pos.x2},${pos.y2}`)
+                        .attr('stroke', neuronParts.synapses.color)
+                        .attr('stroke-width', 2)
+                        .attr('fill', 'none')
+                        .attr('marker-end', 'url(#arrowhead)');
+                });
+
+                // Add synapses label
+                mainGroup.append('text')
+                    .attr('class', 'neuron-label')
+                    .attr('x', 525)
+                    .attr('y', -60)
+                    .attr('text-anchor', 'middle')
+                    .text(neuronParts.synapses.label);
+
+                // Add signal animation
+                const signalPath = mainGroup.append('circle')
+                    .attr('class', 'signal-pulse')
+                    .attr('r', 4);
+
+                let isAnimating = false;
+
+                // Signal animation function with stages
+                function animateSignal() {
+                    if (isAnimating) return;
+                    isAnimating = true;
+
+                    const path = document.querySelector('.neuron-part.axon');
+                    const pathLength = path.getTotalLength();
+                    
+                    // Stage 1: Dendrites receiving signal
+                    signalDescription.style('opacity', 1)
+                        .text(neuronParts.dendrites.signalDesc);
+                    
+                    setTimeout(() => {
+                        // Stage 2: Cell body processing
+                        signalDescription.text(neuronParts.cellBody.signalDesc);
+                        cellBody.transition()
+                            .duration(500)
+                            .attr('fill', '#ffa726')
+                            .transition()
+                            .duration(500)
+                            .attr('fill', neuronParts.cellBody.color);
+                    }, 1000);
+
+                    setTimeout(() => {
+                        // Stage 3: Axon transmission
+                        signalDescription.text(neuronParts.axon.signalDesc);
+                        signalPath
+                            .attr('opacity', 1)
+                            .attr('transform', 'translate(150,0)')
+                            .transition()
+                            .duration(2000)
+                            .attrTween('transform', function() {
+                                return function(t) {
+                                    const point = path.getPointAtLength(t * pathLength);
+                                    return `translate(${point.x},${point.y})`;
+                                }
+                            });
+                    }, 2000);
+
+                    setTimeout(() => {
+                        // Stage 4: Synaptic transmission
+                        signalDescription.text(neuronParts.synapses.signalDesc);
+                        synapsesGroup.selectAll('path')
+                            .transition()
+                            .duration(500)
+                            .attr('stroke', '#ff5252')
+                            .transition()
+                            .duration(500)
+                            .attr('stroke', neuronParts.synapses.color);
+                    }, 4000);
+
+                    setTimeout(() => {
+                        signalPath.attr('opacity', 0);
+                        signalDescription.style('opacity', 0);
+                        isAnimating = false;
+                    }, 5000);
+                }
+
+                // Add hover effects and tooltips
+                dendritesGroup
+                    .on('mouseover', () => {
+                        signalDescription.style('opacity', 1)
+                            .text(neuronParts.dendrites.signalDesc);
+                    })
+                    .on('mouseout', () => {
+                        if (!isAnimating) signalDescription.style('opacity', 0);
+                    })
+                    .on('click', animateSignal);
+
+                cellBody
+                    .on('mouseover', () => {
+                        signalDescription.style('opacity', 1)
+                            .text(neuronParts.cellBody.signalDesc);
+                    })
+                    .on('mouseout', () => {
+                        if (!isAnimating) signalDescription.style('opacity', 0);
+                    });
+
+                axon
+                    .on('mouseover', () => {
+                        signalDescription.style('opacity', 1)
+                            .text(neuronParts.axon.signalDesc);
+                    })
+                    .on('mouseout', () => {
+                        if (!isAnimating) signalDescription.style('opacity', 0);
+                    });
+
+                synapsesGroup
+                    .on('mouseover', () => {
+                        signalDescription.style('opacity', 1)
+                            .text(neuronParts.synapses.signalDesc);
+                    })
+                    .on('mouseout', () => {
+                        if (!isAnimating) signalDescription.style('opacity', 0);
+                    });
+
+                // Show initial instruction
+                setTimeout(() => {
+                    signalDescription.style('opacity', 1);
+                }, 1000);
+            }
+        </script>
     </section>
 
     <section id="section4">
@@ -238,33 +628,10 @@
 
     <section id="section10">
         <h2>Review and Reflect</h2>
-        <div class="image-placeholder">
-            <img src="/placeholder.svg?height=300&width=600" alt="A close-up, artistic rendering of a single biological neuron, highlighting its intricate structure and beauty.">
-        </div>
-        <p>In this lesson, we've delved into the fascinating world of biological neurons, the fundamental building blocks of the brain. We've learned about their key components – dendrites, cell body, axon, and synapses – and how they work together to process and transmit information. This biological process serves as the inspiration for artificial neural networks. In the next lesson, we'll see how these biological concepts are translated into the computational world of artificial neurons.</p>
+                <p>In this lesson, we've delved into the fascinating world of biological neurons, the fundamental building blocks of the brain. We've learned about their key components – dendrites, cell body, axon, and synapses – and how they work together to process and transmit information. This biological process serves as the inspiration for artificial neural networks. In the next lesson, we'll see how these biological concepts are translated into the computational world of artificial neurons.</p>
     </section>
 
     <script>
-        // Show the first section initially
-        document.getElementById("section1").style.display = "block";
-        document.getElementById("section1").style.opacity = "1";
-
-        function showNextSection(nextSectionId) {
-            const currentButton = event.target;
-            const nextSection = document.getElementById("section" + nextSectionId);
-            
-            currentButton.style.display = "none";
-            
-            nextSection.style.display = "block";
-            setTimeout(() => {
-                nextSection.style.opacity = "1";
-            }, 10);
-
-            setTimeout(() => {
-                nextSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 500);
-        }
-
         function revealAnswer(id) {
             const revealText = document.getElementById(id);
             const revealButton = event.target;
